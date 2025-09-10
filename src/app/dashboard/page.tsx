@@ -91,9 +91,36 @@ export default function DashboardPage() {
   }
 
   if (error) {
+    // Auto-redirect to login after 3 seconds when there's an error
+    useEffect(() => {
+      const redirectTimer = setTimeout(() => {
+        router.push('/login')
+      }, 3000)
+      
+      return () => clearTimeout(redirectTimer)
+    }, [router])
+
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-red-600">Error: {error}</div>
+        <div className="max-w-md mx-auto text-center">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <div className="text-red-800 text-lg font-medium mb-2">
+              Authentication Error
+            </div>
+            <div className="text-red-600 mb-4">
+              {error}
+            </div>
+            <div className="text-red-600 text-sm mb-4">
+              You will be redirected to login in 3 seconds...
+            </div>
+            <button
+              onClick={() => router.push('/login')}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            >
+              Go to Login Now
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
