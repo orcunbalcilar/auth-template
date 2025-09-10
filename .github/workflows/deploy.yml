@@ -29,9 +29,9 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           NODE_ENV: production
-          TOKEN_REFRESH_INTERVAL: 30
-          SESSION_LIFETIME: 120
-          
+          TOKEN_REFRESH_INTERVAL: 5
+          SESSION_LIFETIME: 40
+
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
         with:
