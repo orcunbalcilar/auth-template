@@ -31,6 +31,7 @@ jobs:
           NODE_ENV: production
           TOKEN_REFRESH_INTERVAL: 5
           SESSION_LIFETIME: 40
+          SECURE_COOKIES: true
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
