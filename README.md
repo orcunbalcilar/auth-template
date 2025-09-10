@@ -2,6 +2,17 @@
 
 This project demonstrates Next.js authentication using access tokens with automatic expiration handling.
 
+## 🚀 Quick Start
+
+### Development
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Start development server: `npm run dev`
+4. Visit `http://localhost:3000`
+
+### Production Deployment
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete Vercel deployment setup with automatic CI/CD.
+
 ## Features
 
 - **JWT Authentication**: Secure token-based authentication
@@ -9,6 +20,7 @@ This project demonstrates Next.js authentication using access tokens with automa
 - **HTTP-Only Cookies**: Secure token storage
 - **Token Expiration Handling**: Graceful redirect to login when tokens expire
 - **Real-time Token Status**: Dashboard shows token expiration information
+- **Automatic Deployment**: CI/CD pipeline with Vercel integration
 
 ## 🔧 Authentication Configuration
 
