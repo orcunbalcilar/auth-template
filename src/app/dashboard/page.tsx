@@ -74,6 +74,17 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [fetchUserInfo])
 
+  // Auto-redirect to login after 3 seconds when there's an error
+  useEffect(() => {
+    if (error) {
+      const redirectTimer = setTimeout(() => {
+        router.push('/login')
+      }, 3000)
+      
+      return () => clearTimeout(redirectTimer)
+    }
+  }, [error, router])
+
   const formatTimeRemaining = (seconds: number) => {
     // Ensure non-negative values
     const safeSeconds = Math.max(0, seconds)
@@ -91,15 +102,6 @@ export default function DashboardPage() {
   }
 
   if (error) {
-    // Auto-redirect to login after 3 seconds when there's an error
-    useEffect(() => {
-      const redirectTimer = setTimeout(() => {
-        router.push('/login')
-      }, 3000)
-      
-      return () => clearTimeout(redirectTimer)
-    }, [router])
-
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="max-w-md mx-auto text-center">
