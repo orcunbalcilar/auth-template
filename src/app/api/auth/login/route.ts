@@ -37,6 +37,17 @@ export async function POST(request: NextRequest) {
     // Generate access token with session start time and constant lifetime
     const sessionStart = Math.floor(Date.now() / 1000)
     const sessionExpiry = sessionStart + SESSION_LIFETIME
+    
+    console.log('Generating token with:', {
+      userId: user.id,
+      email: user.email,
+      sessionStart,
+      sessionExpiry,
+      SESSION_LIFETIME,
+      JWT_SECRET_EXISTS: !!process.env.JWT_SECRET,
+      NODE_ENV: process.env.NODE_ENV
+    })
+    
     const accessToken = await new SignJWT({ 
       userId: user.id, 
       email: user.email,
@@ -46,6 +57,8 @@ export async function POST(request: NextRequest) {
       .setIssuedAt()
       .setExpirationTime(sessionExpiry) // Token expires at session end
       .sign(JWT_SECRET)
+
+    console.log('Token generated successfully, setting cookie...')
 
     // Set access token cookie
     const response = NextResponse.json({ 
@@ -58,7 +71,8 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: SESSION_LIFETIME, // Cookie expires with session
-      path: '/'
+      path: '/',
+      priority: 'high'
     })
 
     return response

@@ -14,18 +14,35 @@ interface TokenPayload extends JWTPayload {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      JWT_SECRET_EXISTS: !!process.env.JWT_SECRET,
+      JWT_SECRET_LENGTH: process.env.JWT_SECRET?.length || 0
+    })
+
     const accessToken = request.cookies.get('access_token')?.value
 
     if (!accessToken) {
+      console.log('No access token found in cookies')
       return NextResponse.json(
         { error: 'Access token not found' },
         { status: 401 }
       )
     }
 
+    console.log('Access token found, verifying...')
+
     // Verify access token
     const { payload } = await jwtVerify(accessToken, JWT_SECRET)
     const decoded = payload as TokenPayload
+
+    console.log('Token verified successfully:', {
+      userId: decoded.userId,
+      email: decoded.email,
+      sessionStart: decoded.sessionStart,
+      iat: decoded.iat,
+      exp: decoded.exp
+    })
 
     // Check session lifetime
     const currentTime = Math.floor(Date.now() / 1000)
@@ -57,7 +74,12 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Token verification error:', error)
+    console.error('Token verification error details:', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      JWT_SECRET_EXISTS: !!process.env.JWT_SECRET,
+      NODE_ENV: process.env.NODE_ENV
+    })
     return NextResponse.json(
       { error: 'Invalid access token' },
       { status: 401 }

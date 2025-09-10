@@ -69,7 +69,8 @@ export async function middleware(request: NextRequest) {
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
           maxAge: timeLeft, // Cookie expires with session
-          path: '/'
+          path: '/',
+          priority: 'high'
         })
         
         console.log(`Token refreshed. Session time left: ${timeLeft}s`)
@@ -86,7 +87,12 @@ export async function middleware(request: NextRequest) {
     
   } catch (error) {
     // Access token is invalid, redirect to login
-    console.error('Access token validation failed:', error)
+    console.error('Access token validation failed in middleware:', {
+      error: error instanceof Error ? error.message : error,
+      path: request.nextUrl.pathname,
+      JWT_SECRET_EXISTS: !!process.env.JWT_SECRET,
+      NODE_ENV: process.env.NODE_ENV
+    })
     return NextResponse.redirect(new URL('/login', request.url))
   }
 }
