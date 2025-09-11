@@ -22,10 +22,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  console.log(`Middleware processing request for: ${request.nextUrl.pathname}`)
+  // log cookies
+  console.log('Cookies:', request.cookies)
+
   const accessToken = request.cookies.get('access_token')?.value
 
   // If no access token, redirect to login
   if (!accessToken) {
+    console.log('No access token, redirecting to login...')
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
@@ -69,6 +74,7 @@ export async function middleware(request: NextRequest) {
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
           maxAge: timeLeft, // Cookie expires with session
+          domain: '.auth-template-phi.vercel.app',
           path: '/'
         })
         

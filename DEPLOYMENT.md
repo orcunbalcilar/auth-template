@@ -1,44 +1,16 @@
 # Deployment Guide
 
-# Deployment Guide
+## Vercel Production Deployment Setup
 
-## Automatic GitHub Actions Deployment (Recommended)
+This guide will help you set up automatic deployment to Vercel production when you push commits to your main/master branch.
 
-This project uses GitHub Actions for automatic deployment to Vercel production when you push commits to your main/master branch.
+### Prerequisites
 
-### Stable Production URL
-**https://auth-template-phi.vercel.app** - This URL won't change between deployments.
+1. **Vercel Account**: Sign up at [vercel.com](https://vercel.com)
+2. **Vercel CLI**: Install globally with `npm i -g vercel`
+3. **GitHub Repository**: Your project should be in a GitHub repository
 
 ### Setup Steps
-
-#### 1. Configure GitHub Secrets
-
-In your GitHub repository, go to **Settings > Secrets and variables > Actions** and add:
-
-- `VERCEL_TOKEN`: Get from [Vercel Account Settings > Tokens](https://vercel.com/account/tokens)
-- `VERCEL_ORG_ID`: `team_rebTj3bpbQjCVd8eeHaIWhEk`
-- `VERCEL_PROJECT_ID`: `prj_4fxnDCBeB2x7EazOrAtT3a6kwR6c`
-- `JWT_SECRET`: Generate with `openssl rand -base64 32`
-
-See `setup-github-secrets.md` for detailed instructions.
-
-#### 2. Push to Deploy
-
-```bash
-git add .
-git commit -m "Deploy to production"
-git push origin main
-```
-
-The GitHub Action will:
-- Install dependencies
-- Build the project
-- Deploy to Vercel production
-- Use the stable URL: https://auth-template-phi.vercel.app
-
-### Manual Deployment (Alternative)
-
-If you need to deploy manually without GitHub Actions:
 
 #### 1. Link Project to Vercel
 
@@ -48,17 +20,53 @@ vercel login
 vercel link
 ```
 
+Follow the prompts to:
+- Select your team (or personal account)
+- Link to existing project or create new one
+- Confirm the project settings
+
 #### 2. Set Up Environment Variables
 
+**Option A: Using the provided script (Recommended)**
 ```bash
 ./setup-vercel-env.sh
 ```
 
-#### 3. Manual Deploy
+**Option B: Manual setup**
+```bash
+# Generate a secure JWT secret
+JWT_SECRET=$(openssl rand -base64 32)
+
+# Set each environment variable
+vercel env add JWT_SECRET production
+vercel env add NODE_ENV production
+vercel env add TOKEN_REFRESH_INTERVAL production  
+vercel env add SESSION_LIFETIME production
+vercel env add SECURE_COOKIES production
+```
+
+#### 3. Configure GitHub Secrets (for GitHub Actions)
+
+In your GitHub repository, go to **Settings > Secrets and variables > Actions** and add:
+
+- `VERCEL_TOKEN`: Get from [Vercel Account Settings > Tokens](https://vercel.com/account/tokens)
+- `VERCEL_ORG_ID`: Found in your Vercel team settings or `.vercel/project.json`
+- `VERCEL_PROJECT_ID`: Found in your Vercel project settings or `.vercel/project.json`
+- `JWT_SECRET`: The same JWT secret you used in Vercel environment variables
+
+#### 4. Push to Deploy
 
 ```bash
-vercel --prod
+git add .
+git commit -m "Setup production deployment"
+git push origin main
 ```
+
+### Automatic Deployment
+
+- **Trigger**: Every push to `main` or `master` branch
+- **Process**: GitHub Actions will build and deploy to Vercel production
+- **Environment**: Uses production environment variables from Vercel
 
 ### Environment Variables
 

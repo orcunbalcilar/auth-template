@@ -58,8 +58,12 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: SESSION_LIFETIME, // Cookie expires with session
+      domain: 'auth-template-phi.vercel.app',
       path: '/'
     })
+
+    // log response cookies
+    console.log('Set-Cookie:', response.cookies.get('access_token'))
 
     return response
 

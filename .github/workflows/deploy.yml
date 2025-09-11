@@ -30,7 +30,7 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           NODE_ENV: production
           TOKEN_REFRESH_INTERVAL: 5
-          SESSION_LIFETIME: 40
+          SESSION_LIFETIME: 30
           SECURE_COOKIES: true
 
       - name: Deploy to Vercel
@@ -41,22 +41,3 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--prod'
           working-directory: ./
-        
-      - name: Comment PR with deployment URL
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '🚀 **Deployment Preview**: https://auth-template-phi.vercel.app'
-            })
-            
-      - name: Output deployment info
-        run: |
-          echo "🚀 Production deployment completed!"
-          echo "📍 Production URL: https://auth-template-phi.vercel.app"
-          echo "⏰ Token refresh interval: 5 seconds"
-          echo "🔒 Session lifetime: 40 seconds"
