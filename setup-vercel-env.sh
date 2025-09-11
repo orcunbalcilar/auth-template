@@ -16,10 +16,10 @@ echo "Setting NODE_ENV..."
 vercel env add NODE_ENV production <<< "production"
 
 echo "Setting TOKEN_REFRESH_INTERVAL..."
-vercel env add TOKEN_REFRESH_INTERVAL production <<< "30"
+vercel env add TOKEN_REFRESH_INTERVAL production <<< "5"
 
 echo "Setting SESSION_LIFETIME..."
-vercel env add SESSION_LIFETIME production <<< "120"
+vercel env add SESSION_LIFETIME production <<< "40"
 
 echo "Setting SECURE_COOKIES..."
 vercel env add SECURE_COOKIES production <<< "true"
