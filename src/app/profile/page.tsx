@@ -7,6 +7,8 @@ import Link from 'next/link'
 interface User {
   id: string
   email: string
+  firstName?: string
+  lastName?: string
 }
 
 export default function ProfilePage() {
@@ -92,7 +94,7 @@ export default function ProfilePage() {
               User Profile
             </h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              This is another protected page to test middleware functionality
+              This is another protected page powered by Spring Boot authentication
             </p>
           </div>
           <div className="border-t border-gray-200">
@@ -109,11 +111,27 @@ export default function ProfilePage() {
                   {user?.email}
                 </dd>
               </div>
+              {user?.firstName && (
+                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                  <dt className="text-sm font-medium text-gray-500">First Name</dt>
+                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                    {user.firstName}
+                  </dd>
+                </div>
+              )}
+              {user?.lastName && (
+                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                  <dt className="text-sm font-medium text-gray-500">Last Name</dt>
+                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                    {user.lastName}
+                  </dd>
+                </div>
+              )}
               <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Account Status</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                   <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                    Active
+                    Active (Spring Boot)
                   </span>
                 </dd>
               </div>
@@ -121,23 +139,26 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Middleware Test Info */}
+        {/* Spring Boot Integration Info */}
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
           <h4 className="text-lg font-medium text-blue-900 mb-4">
-            Middleware Test
+            Spring Boot Authentication Test
           </h4>
           <div className="text-sm text-blue-800 space-y-2">
             <p>
-              <strong>✓ Route Protection:</strong> This page is protected by middleware. If you weren&apos;t authenticated, you would be redirected to login.
+              <strong>✓ Route Protection:</strong> This page is protected by middleware that validates tokens with the Spring Boot backend.
             </p>
             <p>
-              <strong>✓ Token Validation:</strong> Your access token was verified before allowing access to this page.
+              <strong>✓ Token Validation:</strong> Your access token was verified against the Spring Boot API before allowing access.
             </p>
             <p>
-              <strong>✓ Auto-Refresh:</strong> If your token was about to expire (&lt; 5 minutes), it was automatically refreshed.
+              <strong>✓ Auto-Refresh:</strong> If your token was expired, it was automatically refreshed using your refresh token.
             </p>
             <p>
-              <strong>Navigation Test:</strong> Try navigating between Dashboard and Profile to see middleware in action.
+              <strong>✓ Backend Integration:</strong> All authentication logic is handled by the Spring Boot API at auth-spring-api.onrender.com.
+            </p>
+            <p>
+              <strong>Navigation Test:</strong> Try navigating between Dashboard and Profile to see Spring Boot middleware in action.
             </p>
           </div>
         </div>

@@ -1,17 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { jwtVerify, JWTPayload, SignJWT } from 'jose'
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key')
-
-// Environment variables for session configuration
-const SESSION_LIFETIME = parseInt(process.env.SESSION_LIFETIME || '120') // Default: 2 minutes
-const TOKEN_REFRESH_INTERVAL = parseInt(process.env.TOKEN_REFRESH_INTERVAL || '30') // Default: 30 seconds
-
-interface TokenPayload extends JWTPayload {
-  userId: string
-  email: string
-  sessionStart: number // When the session originally started
-}
+import { callSpringBootApi, springBootApiEndpoints, VerifyResponse, RefreshTokenResponse } from '@/lib/api'
 
 export async function middleware(request: NextRequest) {
   // Skip middleware for auth routes and public assets
@@ -23,10 +11,10 @@ export async function middleware(request: NextRequest) {
   }
 
   console.log(`Middleware processing request for: ${request.nextUrl.pathname}`)
-  // log cookies
-  console.log('Cookies:', request.cookies)
+  console.log('Cookies:', Object.fromEntries(request.cookies.getAll().map(c => [c.name, c.value])))
 
   const accessToken = request.cookies.get('access_token')?.value
+  const refreshToken = request.cookies.get('refresh_token')?.value
 
   // If no access token, redirect to login
   if (!accessToken) {
@@ -35,64 +23,71 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    // Verify access token
-    const { payload } = await jwtVerify(accessToken, JWT_SECRET)
-    const tokenPayload = payload as TokenPayload
-    
-    const now = Math.floor(Date.now() / 1000)
-    const sessionStart = tokenPayload.sessionStart
-    const sessionExpiry = sessionStart + SESSION_LIFETIME
-    
-    // Check if session lifetime has been exceeded
-    if (now >= sessionExpiry) {
-      console.log(`Session lifetime exceeded! Current: ${now} >= Expiry: ${sessionExpiry}`)
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-    
-    // Always refresh token every configured interval (no conditions)
-    const tokenAge = now - payload.iat!
-    if (tokenAge >= TOKEN_REFRESH_INTERVAL) {
-      console.log(`Refreshing token (${TOKEN_REFRESH_INTERVAL}s interval)...`)
-      
-      try {
-        // Generate new access token with same constant lifetime
-        const newAccessToken = await new SignJWT({
-          userId: tokenPayload.userId,
-          email: tokenPayload.email,
-          sessionStart: sessionStart // Keep original session start time
-        })
-          .setProtectedHeader({ alg: 'HS256' })
-          .setIssuedAt()
-          .setExpirationTime(sessionExpiry) // Use constant expiry time
-          .sign(JWT_SECRET)
+    // Validate access token with Spring Boot backend
+    const result = await callSpringBootApi<VerifyResponse>(springBootApiEndpoints.verify, {
+      method: 'GET',
+      token: accessToken
+    })
 
-        // Set new token in cookie
+    if (!result.error && result.data) {
+      // Token is valid, continue
+      console.log('Access token valid, continuing...')
+      return NextResponse.next()
+    }
+
+    // Token is invalid or expired, try to refresh
+    if (result.status === 401 && refreshToken) {
+      console.log('Access token expired, attempting refresh...')
+      
+      const refreshResult = await callSpringBootApi<RefreshTokenResponse>(springBootApiEndpoints.refreshToken, {
+        method: 'POST',
+        body: { refreshToken }
+      })
+
+      if (!refreshResult.error && refreshResult.data) {
+        const { accessToken: newAccessToken } = refreshResult.data
+        console.log('Token refreshed successfully')
+
+        // Set new access token in response and continue
         const response = NextResponse.next()
-        const timeLeft = sessionExpiry - now
         response.cookies.set('access_token', newAccessToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
-          maxAge: timeLeft, // Cookie expires with session
-          domain: '.auth-template-phi.vercel.app',
+          maxAge: 30 * 60, // 30 minutes
           path: '/'
         })
-        
-        console.log(`Token refreshed. Session time left: ${timeLeft}s`)
+
         return response
-        
-      } catch (refreshError) {
-        console.error('Failed to refresh token:', refreshError)
-        return NextResponse.redirect(new URL('/login', request.url))
       }
     }
+
+    // Both access token and refresh failed, redirect to login
+    console.log('Token validation and refresh failed, redirecting to login...')
+    const response = NextResponse.redirect(new URL('/login', request.url))
     
-    // Token is valid, continue
-    return NextResponse.next()
+    // Clear invalid tokens
+    response.cookies.set('access_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/'
+    })
+    
+    response.cookies.set('refresh_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/'
+    })
+
+    return response
     
   } catch (error) {
-    // Access token is invalid, redirect to login
-    console.error('Access token validation failed:', error)
+    // Network error or other issues, redirect to login
+    console.error('Middleware error:', error)
     return NextResponse.redirect(new URL('/login', request.url))
   }
 }

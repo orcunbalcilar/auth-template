@@ -1,16 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { SignJWT } from 'jose'
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key')
-
-// Environment variables for session configuration
-const SESSION_LIFETIME = parseInt(process.env.SESSION_LIFETIME || '120') // Default: 2 minutes
-
-// Mock user database - replace with your actual user authentication
-const mockUsers = [
-  { id: '1', email: 'user@example.com', password: 'password123' },
-  { id: '2', email: 'admin@example.com', password: 'admin123' }
-]
+import { callSpringBootApi, springBootApiEndpoints, LoginResponse } from '@/lib/api'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,46 +13,55 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find user (replace with your actual authentication logic)
-    const user = mockUsers.find(u => u.email === email && u.password === password)
-    
-    if (!user) {
+    // Call Spring Boot login endpoint
+    const result = await callSpringBootApi<LoginResponse>(springBootApiEndpoints.login, {
+      method: 'POST',
+      body: { email, password }
+    })
+
+    if (result.error || !result.data) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
+        { error: result.error || 'Login failed' },
+        { status: result.status }
       )
     }
 
-    // Generate access token with session start time and constant lifetime
-    const sessionStart = Math.floor(Date.now() / 1000)
-    const sessionExpiry = sessionStart + SESSION_LIFETIME
-    const accessToken = await new SignJWT({ 
-      userId: user.id, 
-      email: user.email,
-      sessionStart: sessionStart // Track when the session originally started
-    })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime(sessionExpiry) // Token expires at session end
-      .sign(JWT_SECRET)
+    // Extract tokens from Spring Boot response
+    const { accessToken, refreshToken, user } = result.data
+
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: 'No access token received from server' },
+        { status: 500 }
+      )
+    }
 
     // Set access token cookie
     const response = NextResponse.json({ 
       message: 'Login successful',
-      user: { id: user.id, email: user.email }
+      user: user
     })
     
     response.cookies.set('access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: SESSION_LIFETIME, // Cookie expires with session
-      domain: '.auth-template-phi.vercel.app',
+      maxAge: 30 * 60, // 30 minutes
       path: '/'
     })
 
-    // log response cookies
-    console.log('Set-Cookie:', response.cookies.get('access_token'))
+    // Set refresh token cookie if provided
+    if (refreshToken) {
+      response.cookies.set('refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+        path: '/'
+      })
+    }
+
+    console.log('Login successful for user:', user?.email)
 
     return response
 

@@ -1,16 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { jwtVerify, JWTPayload } from 'jose'
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key')
-
-// Environment variables for session configuration
-const SESSION_LIFETIME = parseInt(process.env.SESSION_LIFETIME || '120') // Default: 2 minutes
-
-interface TokenPayload extends JWTPayload {
-  userId: string
-  email: string
-  sessionStart: number
-}
+import { callSpringBootApi, springBootApiEndpoints, VerifyResponse, RefreshTokenResponse } from '@/lib/api'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,44 +12,70 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Verify access token
-    const { payload } = await jwtVerify(accessToken, JWT_SECRET)
-    const decoded = payload as TokenPayload
+    // Call Spring Boot /verify endpoint
+    const result = await callSpringBootApi<VerifyResponse>(springBootApiEndpoints.verify, {
+      method: 'GET',
+      token: accessToken
+    })
 
-    // Check session lifetime
-    const currentTime = Math.floor(Date.now() / 1000)
-    const sessionStart = decoded.sessionStart
-    const sessionExpiry = sessionStart + SESSION_LIFETIME
+    if (result.error) {
+      // If unauthorized, try to refresh the token
+      if (result.status === 401) {
+        const refreshToken = request.cookies.get('refresh_token')?.value
+        
+        if (refreshToken) {
+          const refreshResult = await callSpringBootApi<RefreshTokenResponse>(springBootApiEndpoints.refreshToken, {
+            method: 'POST',
+            body: { refreshToken }
+          })
 
-    // If session lifetime has ended, return 401
-    if (currentTime >= sessionExpiry) {
+          if (!refreshResult.error && refreshResult.data) {
+            const { accessToken: newAccessToken } = refreshResult.data
+            
+            // Retry the /verify endpoint with new token
+            const retryResult = await callSpringBootApi<VerifyResponse>(springBootApiEndpoints.verify, {
+              method: 'GET',
+              token: newAccessToken
+            })
+
+            if (!retryResult.error && retryResult.data) {
+              // Update access token cookie
+              const response = NextResponse.json({
+                status: 'ok',
+                user: retryResult.data.user || retryResult.data,
+              })
+
+              response.cookies.set('access_token', newAccessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 30 * 60, // 30 minutes
+                path: '/'
+              })
+
+              return response
+            }
+          }
+        }
+      }
+
       return NextResponse.json(
-        { error: 'Session expired' },
-        { status: 401 }
+        { error: result.error },
+        { status: result.status }
       )
     }
 
-    // Calculate remaining time for response
-    const timeRemaining = sessionExpiry - currentTime
-
-    // Session lifetime hasn't ended, return OK with user info
+    // Success - return user data
     return NextResponse.json({
       status: 'ok',
-      user: { 
-        id: decoded.userId, 
-        email: decoded.email 
-      },
-      session: {
-        timeRemaining: timeRemaining,
-        expiresAt: sessionExpiry
-      }
+      user: result.data?.user || result.data,
     })
 
   } catch (error) {
     console.error('Token verification error:', error)
     return NextResponse.json(
-      { error: 'Invalid access token' },
-      { status: 401 }
+      { error: 'Internal server error' },
+      { status: 500 }
     )
   }
 }
